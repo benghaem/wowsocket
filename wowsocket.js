@@ -1,22 +1,3 @@
-//For testing
-
-function init(){
-	ws = new WowSocket("ws://localhost:8888/ws/")
-	ws.onmessage = function(){
-	}
-}
-
-function test_send(){
-
-	var wsm = new WowSocketMessage({'test-request':1},ws,10000,true)
-	wsm.on_complete(
-		function(data){
-		document.writeln(data)
-		})
-	wsm.on_fail(wsm.built_in_retry())
-	wsm.send()
-}
-
 function WowSocket(url, protocols){
 	//Define values
 
@@ -31,7 +12,8 @@ function WowSocket(url, protocols){
 	
 	var root_wow = this
 
-	this.id_counter = 0;
+	this.send_id_counter = 0;
+	this.true_id_counter = 0;
 
 	this.wsm_dict = {}
 
@@ -76,7 +58,7 @@ WowSocket.prototype.handle_message = function(event){
 		var wsm_response_obj = JSON.parse(event.data);
 		var handle_id = wsm_response_obj['trackid'].toString()
 		if (Object.keys(this.wsm_dict).indexOf(handle_id) != -1){
-			this.wsm_dict[wsm_response_obj[handle_id].complete(wsm_response_obj)
+			this.wsm_dict[handle_id].complete(wsm_response_obj)
 			this.remove_wsm(handle_id)
 		}
 	}
@@ -85,13 +67,18 @@ WowSocket.prototype.handle_message = function(event){
 	}
 }
 
-WowSocket.prototype.get_id = function(event){
-	this.id_counter++;
-	return this.id_counter;
+WowSocket.prototype.get_send_id = function(event){
+	this.send_id_counter++;
+	return this.send_id_counter;
+}
+
+WowSocket.prototype.get_true_id = function(event){
+	this.true_id_counter++;
+	return this.true_id_counter;
 }
 
 WowSocket.prototype.add_wsm = function(wsm){
-	this.wsm_dict[wsm.id.toString()] = wsm;
+	this.wsm_dict[wsm.send_id.toString()] = wsm;
 }
 
 WowSocket.prototype.remove_wsm = function(wsm_id){
@@ -105,10 +92,12 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
 
 		//Take input msg_object and attach trackid
 		this.msg = msg_obj;
-		this.id = undefined;
+		this.send_id = undefined;
 
 		//The wowsocket the message is associated with
 		this.wowsocket = wowsocket;
+
+		this.true_id = this.wowsocket.get_true_id()
 
 		//Set base state of state machine
 		this.result = "";
@@ -135,8 +124,8 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
  
 	WowSocketMessage.prototype.send = function () {
 		//Get a new id before sending
-		var new_id = this.wowsocket.get_id()
-		this.id = new_id
+		var new_id = this.wowsocket.get_send_id()
+		this.send_id = new_id
 		this.msg['trackid'] = new_id
 		
 		//Save this context for use in timeout
@@ -150,9 +139,11 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
 	WowSocketMessage.prototype.fail = function(err){
 		if (this.state === 0) {
 				if (this.verbose) {
-					console.log("WSM with trackid:"+this.id+" failed for "+err+" and was marked as failed")
+					console.log("WSM with trackid:"+this.send_id+" failed for "+err+" and was marked as failed")
 				};
 				this.state = 2
+				//Unregister from wsm_dict
+				this.wowsocket.remove_wsm(this.send_id);
 				this.result = err;
 				this.fail_action(err)
 			};
@@ -161,7 +152,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
 	WowSocketMessage.prototype.complete = function(val){
 		if (this.state === 0){
 			if (this.verbose) {
-				console.log("WSM with trackid:"+this.id+" recived response and was marked as completed")
+				console.log("WSM with trackid:"+this.send_id+" recived response and was marked as completed")
 			};
 			this.state = 1;
 			window.clearTimeout(this.timeout);
@@ -204,26 +195,31 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
 
 
 	//This function sets up retry related variables within the object and will retry the send the set number of tries. If no value is passed for num retry the default is set to 3. If -1 is passed for num_retry the message will retry forever. The function observes the object level verbosity setting.
-	WowSocketMessage.prototype.built_in_retry = function(num_retry){
+	WowSocketMessage.prototype.built_in_retry = function(num_retry, retry_callback, retry_failed_callback){
 		this.retry_count = 0
 		if (num_retry === undefined) {
 			this.retry_max = 3;
 		}else{
 			this.retry_max = num_retry
 		}
-		return function(e){
-			if ((e && this.retry_count < this.retry_max) || (e && this.retry_max === -1)){
+
+		this.rc = retry_callback || function(){}
+		this.rfc = retry_failed_callback || function(){}
+
+		return function(err){
+			if ((err && this.retry_count < this.retry_max) || (err && this.retry_max === -1)){
+				this.rc()
 				if (this.verbose) {
-					console.log('Error, retrying')
+					console.log("WSM with trackid:"+this.send_id+" Retrying")
 				};
 				this.retry_count++;
-				this.wowsocket.remove_wsm(this.id);
 				this.reset_state();
 				this.send();
 			}
 			else{
+				this.rfc()
 				if (this.verbose) {
-					console.log('Max retry exceeded')
+					console.log("WSM with trackid:"+this.send_id+" exceeded max retry count")
 				}
 			}
 		}

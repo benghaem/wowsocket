@@ -2,11 +2,44 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<title>Websocket-Promise-Test</title>
-	<script src="/static/websocket-promise.js" type="text/javascript" charset="utf-8" async defer></script>
-	<script src="/static/wowsocket.js" type="text/javascript" charset="utf-8" async defer></script>
+	<title>WowSocket Test</title>
+	<script src="/test/wowsocket.js" type="text/javascript" charset="utf-8" async defer></script>
+	<script src="/extra/test.js" type="text/javascript" charset="utf-8" async defer></script>
+	<link rel="stylesheet" href="/extra/style.css">
 </head>
 <body>
-
+<h2>WowSocket Example / Test Suite</h2>
+<p>This page showcases WowSocket behavior and some of the base built-ins. The consoles are controled directly by callbacks from the sent message objects</p>
+<h3>WowSocket Message Tracker:</h3>
+<p>This area displays the state of the internal WowSocket message tracker (updated every 200ms)</p>
+<div id="wsm_dict_display"></div>
+<div class="example">
+	<div class="example_setup">
+		<h3>Send-Response</h3>
+		<p>An example of send and response standard behavior</p>
+		<button type="button" onclick="ex1()">Run</button>
+	</div>
+	<div class="example_code">
+	</div>
+	<div class="example_result" id="ex1">
+	</div>
+</div>
+<div class="example">
+	<div class="example_setup">
+		<h3>Send-Timeout</h3>
+		<p>An example of a failure state caused by timeout</p>
+		<button type="button" onclick="ex2()">Run</button>
+	</div>
+	<div class="example_code"></div>
+	<div class="example_result" id="ex2"></div>
+</div>
+<div class="example">
+	<div class="example_setup">
+		<h3>Send-Timeout-Retry</h3>
+		<p>An example of the built-in retry behaivor</p>
+		<button type="button" onclick="ex3()">Run</button>
+	</div>
+	<div class="example_result" id="ex3"></div>
+</div>
 </body>
 </html>

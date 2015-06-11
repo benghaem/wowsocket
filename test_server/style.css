@@ -1,0 +1,32 @@
+div.example{
+	width: 600px;
+	height: auto;
+	min-height: 200px;
+	margin: 10px;
+	float: left;
+}
+
+div.example_result{
+	width: 600px;
+	height: 200px;
+	background: #000;
+	color:#fff;
+	overflow:scroll;
+}
+
+div.example_result_line{
+	margin-bottom: 2px;
+	margin-left: 5px;
+}
+
+#wsm_dict_display{
+	height: 20px;
+}
+
+span.err{
+	color:red;
+}
+
+span.succ{
+	color:green;
+}
