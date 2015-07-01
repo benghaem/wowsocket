@@ -1,3 +1,5 @@
+// WowSocketJS V 0.1.1
+
 function WowSocket(url, protocols){
 	//The wrapped websocket
 	this.ws = new WebSocket(url)
@@ -64,10 +66,12 @@ WowSocket.prototype.send_wsm = function(wsm){
 WowSocket.prototype.handle_message = function(event){
 	try{
 		var wsm_response_obj = JSON.parse(event.data);
-		var handle_id = wsm_response_obj['trackid'].toString()
-		if (Object.keys(this.wsm_dict).indexOf(handle_id) != -1){
-			this.wsm_dict[handle_id].complete(wsm_response_obj)
-			this.remove_wsm(handle_id)
+		if (wsm_response_obj['trackid']){
+			var handle_id = wsm_response_obj['trackid'].toString()
+			if (Object.keys(this.wsm_dict).indexOf(handle_id) != -1){
+				this.wsm_dict[handle_id].complete(wsm_response_obj)
+				this.remove_wsm(handle_id)
+			}
 		}
 	}
 	catch(e){
