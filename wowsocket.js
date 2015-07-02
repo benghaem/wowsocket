@@ -1,9 +1,19 @@
-// WowSocketJS V 0.1.1
+// WowSocketJS V 0.1.2
 
-function WowSocket(url, protocols){
+function WowSocket(url, verbose, protocols){
+
 	//The wrapped websocket
-	this.ws = new WebSocket(url)
-
+	// protocols causes some trouble. The documentation states
+	// the protocols argument is set to an empty string if
+	// empty, but passing an empty string causes an error.
+	// Passing an empty array works, but I consider that undocumeted behavior.
+	
+	if (protocols) {
+		this.ws = new WebSocket(url, protocols)
+	} else {
+		this.ws = new WebSocket(url)
+	}
+	
 	//The basic functions associated with the wrapped websocket
 	//Can and should be overwritten
 	this.onopen = function(){console.log('WowSocket Opened')}
@@ -14,6 +24,9 @@ function WowSocket(url, protocols){
 	//Setup base states of counters 
 	this.send_id_counter = 0;
 	this.true_id_counter = 0;
+
+	//Setup verbosity
+	this.verbose = verbose || false;
 
 	//Create obj where we will store future WSMs
 	this.wsm_dict = {}
@@ -66,6 +79,7 @@ WowSocket.prototype.send_wsm = function(wsm){
 WowSocket.prototype.handle_message = function(event){
 	try{
 		var wsm_response_obj = JSON.parse(event.data);
+		// Check to ensure that trackid is actually part of the obj
 		if (wsm_response_obj['trackid']){
 			var handle_id = wsm_response_obj['trackid'].toString()
 			if (Object.keys(this.wsm_dict).indexOf(handle_id) != -1){
@@ -100,9 +114,9 @@ WowSocket.prototype.remove_wsm = function(wsm_id){
 }
 
 //The WSM object
-function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
+function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 		if (typeof msg_obj !== "object") {
-			throw new TypeError("msg_obj must be an object");
+			throw new TypeError("Message in must be an object");
 		};
 
 		//Take input msg_object and attach trackid
@@ -125,9 +139,6 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
 		//Setup timeout
 		this.timeout = undefined;
 		this.timeout_ms = timeout_length || 10000;
-
-		//Setup verbosity
-		this.verbose = verbose || false;
 
 		//Setup callbacks
 		this.fail_action = function(e){
@@ -156,7 +167,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
 	//Internal function to set WSM to fail state
 	WowSocketMessage.prototype.fail = function(err){
 		if (this.state === 0) {
-				if (this.verbose) {
+				if (this.wowsocket.verbose) {
 					console.log("WSM with trackid:"+this.send_id+" failed for "+err+" and was marked as failed")
 				};
 				this.state = 2
@@ -170,7 +181,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
 	//Internal function to set WSM to complete state
 	WowSocketMessage.prototype.complete = function(val){
 		if (this.state === 0){
-			if (this.verbose) {
+			if (this.wowsocket.verbose) {
 				console.log("WSM with trackid:"+this.send_id+" recived response and was marked as completed")
 			};
 			this.state = 1;
@@ -240,7 +251,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
 			if ((err && this.retry_count < this.retry_max) || (err && this.retry_max === -1)){
 				
 				this.rc()
-				if (this.verbose) {
+				if (this.wowsocket.verbose) {
 					console.log("WSM with trackid:"+this.send_id+" Retrying")
 				};
 
@@ -251,7 +262,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length, verbose){
 			}
 			else{
 				this.rfc()
-				if (this.verbose) {
+				if (this.wowsocket.verbose) {
 					console.log("WSM with trackid:"+this.send_id+" exceeded max retry count")
 				}
 			}
