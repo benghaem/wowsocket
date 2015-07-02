@@ -4,7 +4,7 @@ window.onload = function(){
 }
 
 function init(){
-	ws = new WowSocket("ws://localhost:8888/ws/")
+	ws = new WowSocket("ws://localhost:8888/ws/", true)
 	ws.onmessage = function(e){
 		console.log(e.data);
 	}
