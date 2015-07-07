@@ -21,6 +21,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+/**
+ * Create the wowsocket with the given parameters.
+ *
+ * @class
+ * @example
+ *     WowSocket("ws://localhost/ws",false,{'id':'trackerid'})
+ *     // => WowSocket() 
+ *
+ * @param {String} url url to connect to
+ * @param {Boolean} [verbose=false] verbose mode
+ * @param {Object} [custom_response_keys={'id':'id','result':'result','error':'error'}] Custom keys to be used instead of the default when determining id, result, and error keys
+ * @param {String} [protocols] Protocols to be passed to the underlying websocket
+ * @return {WowSocket} A new WowSocket
+ * @access public
+ */
 
 function WowSocket(url, verbose, custom_response_keys, protocols){
 
@@ -82,23 +97,45 @@ function WowSocket(url, verbose, custom_response_keys, protocols){
 	}
 }
 
-//Expose base behavior
+/**
+ * Send a message directly over the internal WebSocket
+ *
+ * @param {String} msg Message to send over the WebSocket
+ * @access public
+ */
+
 WowSocket.prototype.send_raw = function(msg){
 	this.ws.send(msg)
 }
 
+/**
+ * Close the WowSocket
+ *
+ * @access public
+ */
 WowSocket.prototype.close = function(){
 	this.ws.close()
 }
 
-//WowSocket send: This is a simple way to get most of the behavior of the wowsocket without creating WSMs. As long as you are sending JSON objects this will add timeouts and a three retries for free
+/**
+ * Send an object over the WowSocket. This is a simple way to get most of the behavior of the WowSocket without creating WSMs. As long as you are sending JSON objects this will add timeouts and three retries for free
+ *
+ * @param {Object} obj Object to send over the WebSocket
+ * @param {Integer} [timeout=5000] Timeout in ms of the message
+ * @access public
+ */
 WowSocket.prototype.send = function(obj, timeout){
 	wsm = new WowSocketMessage(obj, this, timeout)
 	wsm.on_fail(wsm.built_in_retry())
 	wsm.send()
 }
 
-//Internal method to directly send a WSM. WSM.send() should be used not this method.
+/**
+ * Internal method to directly send a WSM. WSM.send() should be used instead of this method
+ *
+ * @param {WowSocketMessage} wsm WowSocketMessage to send over the WebSocket
+ * @access private
+ */
 WowSocket.prototype.send_wsm = function(wsm){
 	this.add_wsm(wsm);
 	this.ws.send(wsm.to_json())
@@ -153,7 +190,16 @@ WowSocket.prototype.remove_wsm = function(wsm_id){
 	delete this.wsm_dict[wsm_id]
 }
 
-//The WSM object
+/**
+ * @class
+ * Create a WowSocketMessage
+ *
+ * @param {Object} msg_obj Object to send over the WowSocket
+ * @param {WowSocket} wowsocket WowSocket to associate with
+ * @param {Integer} [timeout_length=5000] Length of time in ms before timeout occurs
+ * @return {WowSocketMessage} A new WowSocketMessage
+ * @api public
+ */
 function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 		if (typeof msg_obj !== "object") {
 			throw new TypeError("Message in must be an object");
@@ -178,7 +224,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 
 		//Setup timeout
 		this.timeout = undefined;
-		this.timeout_ms = timeout_length || 10000;
+		this.timeout_ms = timeout_length || 5000;
 
 		//Setup callbacks
 		this.fail_action = function(e){
@@ -189,7 +235,11 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 		}
 	}
  
- 	//Sends the WSM. This is the correct way to send a custom WSM
+    /**
+     * Send the WowSocketMessage. This is the correct way to send a custom WSM
+     *
+     * @api public
+     */
 	WowSocketMessage.prototype.send = function () {
 		//Get a new id before sending
 		var new_id = this.wowsocket.get_send_id()
@@ -233,7 +283,11 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 		}
 	}
 
-	//Gets state in human readable form
+     /**
+     * Get the state of the WowSocketMessage in human readable form
+     * @returns {String} "Pending", "Completed", or "Failed"
+     * @api public
+     */
 	WowSocketMessage.prototype.get_state = function(){
 		switch (this.state){
 			case 0:
@@ -256,11 +310,23 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 		return this.result;
 	}
 
+     /**
+     * Bind a function to the WebSocketMessage complete state
+     *
+     * @param {Function} funct Function to call when WebSocketMessage completes
+     * @api public
+     */
 	//These functions can be used to bind custom behavior to the message's state changes
 	WowSocketMessage.prototype.on_complete = function(funct){
 		this.complete_action = funct;
 	}
 
+    /**
+     * Bind a function to the WebSocketMessage failure state
+     * @function=
+     * @param {Function} funct Function to call when WebSocketMessage fails
+     * @api public
+     */
 	WowSocketMessage.prototype.on_fail = function(funct){
 		this.fail_action = funct;
 	}
@@ -270,8 +336,15 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 		return JSON.stringify(this.msg)
 	}
 
-
-	//This function sets up retry related variables within the object and will retry the send the set number of tries. If no value is passed for num retry the default is set to 3. If -1 is passed for num_retry the message will retry forever. The function observes the object level verbosity setting.
+    /**
+     * This function sets up retry related variables within the object and will retry the send the set number of tries. If no value is passed for num retry the default is set to 3. If -1 is passed for num_retry the message will retry forever. The function observes the object level verbosity setting.
+     *
+     * @param {Integer} [num_retry=3] Number of times to retry sending
+     * @param {Function} [WowSocketMessage~retry_callback] Function to call on retry
+     * @param {Function} [retry_failed_callback] Function to call on failure after final retry
+     * @api public
+     * @returns {Function} 
+     */
 	WowSocketMessage.prototype.built_in_retry = function(num_retry, retry_callback, retry_failed_callback){
 		this.retry_count = 0
 
