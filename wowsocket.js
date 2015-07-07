@@ -1,19 +1,42 @@
-// WowSocketJS V 0.1.2
+// WowSocketJS V 0.2.2
+// The MIT License (MIT)
 
-function WowSocket(url, verbose, protocols){
+// Copyright (c) 2015 Benjamin Ghaemmaghami
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
+function WowSocket(url, verbose, custom_response_keys, protocols){
 
 	//The wrapped websocket
+
 	// protocols causes some trouble. The documentation states
 	// the protocols argument is set to an empty string if
 	// empty, but passing an empty string causes an error.
 	// Passing an empty array works, but I consider that undocumeted behavior.
-	
+
 	if (protocols) {
 		this.ws = new WebSocket(url, protocols)
 	} else {
 		this.ws = new WebSocket(url)
 	}
-	
+
 	//The basic functions associated with the wrapped websocket
 	//Can and should be overwritten
 	this.onopen = function(){console.log('WowSocket Opened')}
@@ -30,6 +53,12 @@ function WowSocket(url, verbose, protocols){
 
 	//Create obj where we will store future WSMs
 	this.wsm_dict = {}
+
+	//Set response keys 
+	this.response_keys = {};
+	this.response_keys['id'] = custom_response_keys['id'] || 'id';
+	this.response_keys['result'] = custom_response_keys['result'] || 'result';
+	this.response_keys['error'] = custom_response_keys['error'] || 'error';
 
 	//save this context for mapping to base ws
 	var root_wow = this
@@ -79,12 +108,23 @@ WowSocket.prototype.send_wsm = function(wsm){
 WowSocket.prototype.handle_message = function(event){
 	try{
 		var wsm_response_obj = JSON.parse(event.data);
-		// Check to ensure that trackid is actually part of the obj
-		if (wsm_response_obj['trackid']){
-			var handle_id = wsm_response_obj['trackid'].toString()
-			if (Object.keys(this.wsm_dict).indexOf(handle_id) != -1){
-				this.wsm_dict[handle_id].complete(wsm_response_obj)
-				this.remove_wsm(handle_id)
+		// Check to ensure that id is actually part of the obj
+		if (wsm_response_obj[this.response_keys['id']]){
+			var handle_id = wsm_response_obj[this.response_keys['id']].toString();
+			// if (Object.keys(this.wsm_dict).indexOf(handle_id) != -1){
+			var handler = null;
+			if (handler = this.wsm_dict[handle_id]){
+				// var handler = this.wsm_dict[handle_id]
+				if (wsm_response_obj[this.response_keys['result']]){
+					handler.complete(wsm_response_obj['result'])
+				}
+				else if (wsm_response_obj[this.response_keys['error']]){
+					handler.fail(wsm_response_obj['error'])
+				}
+				else {
+				 	handler.fail(new Error("Message structure incorrect"))
+				}
+				
 			}
 		}
 	}
@@ -119,7 +159,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 			throw new TypeError("Message in must be an object");
 		};
 
-		//Take input msg_object and attach trackid
+		//Take input msg_object and attach id
 		this.msg = msg_obj;
 		this.send_id = undefined;
 
@@ -154,7 +194,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 		//Get a new id before sending
 		var new_id = this.wowsocket.get_send_id()
 		this.send_id = new_id
-		this.msg['trackid'] = new_id
+		this.msg['id'] = new_id
 		
 		//Save this context for use in timeout
 		var root_wsm = this
@@ -168,7 +208,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 	WowSocketMessage.prototype.fail = function(err){
 		if (this.state === 0) {
 				if (this.wowsocket.verbose) {
-					console.log("WSM with trackid:"+this.send_id+" failed for "+err+" and was marked as failed")
+					console.error("WSM with id:"+this.send_id+" failed for "+err+" and was marked as failed")
 				};
 				this.state = 2
 				//Unregister from wsm_dict
@@ -182,9 +222,11 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 	WowSocketMessage.prototype.complete = function(val){
 		if (this.state === 0){
 			if (this.wowsocket.verbose) {
-				console.log("WSM with trackid:"+this.send_id+" recived response and was marked as completed")
+				console.log("WSM with id:"+this.send_id+" recived response and was marked as completed")
 			};
 			this.state = 1;
+			//Unregister from wsm_dict
+			this.wowsocket.remove_wsm(this.send_id);
 			window.clearTimeout(this.timeout);
 			this.result = val;
 			this.complete_action(val);
@@ -252,7 +294,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 				
 				this.rc()
 				if (this.wowsocket.verbose) {
-					console.log("WSM with trackid:"+this.send_id+" Retrying")
+					console.log("WSM with id:"+this.send_id+" Retrying")
 				};
 
 				//Reset WSM to the base state
@@ -263,7 +305,7 @@ function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 			else{
 				this.rfc()
 				if (this.wowsocket.verbose) {
-					console.log("WSM with trackid:"+this.send_id+" exceeded max retry count")
+					console.log("WSM with id:"+this.send_id+" exceeded max retry count")
 				}
 			}
 		}
