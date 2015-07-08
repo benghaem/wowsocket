@@ -190,6 +190,13 @@ WowSocket.prototype.remove_wsm = function(wsm_id){
 	delete this.wsm_dict[wsm_id]
 }
 
+
+function SendWowSocketMessage(msg_obj,wowsocket,timeout_length){
+    var msg = new WowSocketMessage(msg_obj, wowsocket, timeout_length)
+    msg.send();
+    return msg;
+}
+
 /**
  * @class
  * Create a WowSocketMessage
@@ -200,6 +207,8 @@ WowSocket.prototype.remove_wsm = function(wsm_id){
  * @return {WowSocketMessage} A new WowSocketMessage
  * @api public
  */
+
+
 function WowSocketMessage(msg_obj, wowsocket, timeout_length){
 		if (typeof msg_obj !== "object") {
 			throw new TypeError("Message in must be an object");
