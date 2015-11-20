@@ -6,6 +6,7 @@ import tornado.websocket
 import tornado.ioloop
 import os
 import random
+import simplejson as json
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
@@ -13,9 +14,16 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def on_message(self, msg):
+        msg_obj = json.loads(msg)
+        msg_id = msg_obj['id']
+
+        output_dict = {}
+        output_dict['id'] = msg_id
+        output_dict['resulttty'] = "success!"
+
         # Fake delay 
         yield gen.sleep(1.2)
-        self.write_message(msg)
+        self.write_message(json.dumps(output_dict))
 
     def on_close(self):
         print("Client disconnected")

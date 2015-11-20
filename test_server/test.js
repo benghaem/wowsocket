@@ -4,9 +4,9 @@ window.onload = function(){
 }
 
 function init(){
-	ws = new WowSocket("ws://localhost:8888/ws/", true)
+	ws = new WowSocket("ws://localhost:8888/ws/", true, {'result':'resulttty'})
 	ws.onmessage = function(e){
-		console.log(e.data);
+		// console.log(e.data);
 	}
 	display_wsm_dict(ws);
 }
@@ -50,10 +50,10 @@ function result_out(el,text,state){
 function ex1(){
 	var output = document.getElementById("ex1")
 
-	var wsm = new WowSocketMessage({'test-request':1},ws,2500,true)
+	var wsm = new WowSocketMessage({'test-request':1},ws,2500)
 	wsm.on_complete(
 		function(data){
-			result_out(output, "Recived response:" + wsm.true_id +":"+wsm.send_id,1)
+			result_out(output, "Received response:" + wsm.true_id +":"+wsm.send_id,1)
 		})
 	wsm.on_fail(
 		function(){
@@ -66,10 +66,10 @@ function ex1(){
 function ex2(){
 	var output = document.getElementById("ex2")
 
-	var wsm = new WowSocketMessage({'test-request':1},ws,1000,true)
+	var wsm = new WowSocketMessage({'test-request':1},ws,1000)
 	wsm.on_complete(
 		function(data){
-			result_out(output, "Recived response:" + wsm.true_id +":"+wsm.send_id,1)
+			result_out(output, "Received response:" + wsm.true_id +":"+wsm.send_id,1)
 		})
 	wsm.on_fail(
 		function(){
@@ -91,14 +91,18 @@ function ex3(){
 	}
 
 	
-	var wsm = new WowSocketMessage({'test-request':1},ws,1000,1)
+	var wsm = new WowSocketMessage({'test-request':1},ws,1000)
 	wsm.on_complete(
 		function(data){
 			result_out(output, "Recived response:" + wsm.true_id +":"+wsm.send_id,1)
 		})
 	wsm.on_fail(
-		wsm.built_in_retry(3, rc, rfc)
+			wsm.built_in_retry(3, rc, rfc)
 		)
 	wsm.send()
 	result_out(output, "Sent message:" + wsm.true_id +":"+wsm.send_id)
+}
+
+function test1(){
+	SendWowSocketMessage({'test':1},ws,2500).on_complete(function(e){alert('complete')}).on_fail(function(e){alert('failed')})
 }
