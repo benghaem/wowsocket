@@ -8,3 +8,6 @@ WowSocket was designed as a wrapper for a browser's built-in `WebSocket()` imple
 * enhancing existing projects by adding timeouts to WebSocket communications as well as completion / failure states
 * a websocket wrapper with a minor impact on existing JSON websocket protocols and the ability to define custom protocols
 * features based on pure websockets instead of a framework such as socket.io or WAMP/Autobhan
+
+#Documentation?
+Build the docs with `jsdoc wowsocket.js`
